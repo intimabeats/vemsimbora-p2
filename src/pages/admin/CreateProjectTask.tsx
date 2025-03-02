@@ -1,15 +1,20 @@
 // src/pages/admin/CreateProjectTask.tsx
 import React, { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, Link } from 'react-router-dom'
 import { Layout } from '../../components/Layout'
 import {
   CheckCircle,
   AlertTriangle,
   Plus,
   ArrowLeft,
-  Info,
   Trash2,
-  File
+  FileText,
+  Calendar,
+  Users,
+  Clock,
+  Flag,
+  Award,
+  Briefcase
 } from 'lucide-react'
 import { taskService } from '../../services/TaskService'
 import { projectService } from '../../services/ProjectService'
@@ -17,7 +22,7 @@ import { userManagementService } from '../../services/UserManagementService'
 import { TaskSchema, TaskAction } from '../../types/firestore-schema'
 import { systemSettingsService } from '../../services/SystemSettingsService'
 import { actionTemplateService } from '../../services/ActionTemplateService';
-import { deepCopy } from '../../utils/helpers'; // Import
+import { deepCopy } from '../../utils/helpers';
 import { useAuth } from '../../context/AuthContext'
 
 export const CreateProjectTask: React.FC = () => {
@@ -28,10 +33,10 @@ export const CreateProjectTask: React.FC = () => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    projectId: projectId || '', // Get projectId from route params
-    assignedTo: '', // Changed to single string
+    projectId: projectId || '',
+    assignedTo: '',
     priority: 'medium' as TaskSchema['priority'],
-    startDate: new Date().toISOString().split('T')[0], // Added start date
+    startDate: new Date().toISOString().split('T')[0],
     dueDate: new Date().toISOString().split('T')[0],
     difficultyLevel: 5,
     actions: [] as TaskAction[]
@@ -46,8 +51,6 @@ export const CreateProjectTask: React.FC = () => {
   const [templates, setTemplates] = useState<{ id: string, title: string }[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [projectName, setProjectName] = useState('');
-  // Store file attachments for each action
-  const [attachments, setAttachments] = useState<{ [actionId: string]: File[] }>({});
 
   useEffect(() => {
     if (projectId) {
@@ -119,67 +122,24 @@ export const CreateProjectTask: React.FC = () => {
 
       const newAction: TaskAction = {
         id: Date.now().toString() + Math.random().toString(36).substring(7),
-        title: fullTemplate.title, // Use template title
-        type: 'document', //  We use a single type.
+        title: fullTemplate.title,
+        type: 'document',
         completed: false,
-        description: fullTemplate.elements.map(e => e.description).join(' '), // combine descriptions.
-        data: { steps: deepCopy(fullTemplate.elements) }, // Store the steps in 'data'
+        description: fullTemplate.elements.map(e => e.description).join(' '),
+        data: { steps: deepCopy(fullTemplate.elements) },
       };
 
       setFormData(prev => ({
         ...prev,
         actions: [...prev.actions, newAction],
       }));
+      
+      // Reset the selected template after adding
+      setSelectedTemplate('');
     } catch (error) {
       console.error("Error adding action from template:", error);
       setError("Failed to add action from template.");
     }
-  };
-
-  // NEW: Add an action manually
-  const handleAddAction = (type: TaskAction['type']) => {
-    let newAction: Partial<TaskAction> = {
-      id: Date.now().toString() + Math.random().toString(36).substring(7), // Unique ID
-      type: type,
-      title: type === 'info' ? 'Informações Importantes' : 'Nova Ação',
-      completed: false,
-      description: '',
-    };
-
-    // If it's an 'info' type, add the specific fields
-    if (type === 'info') {
-      newAction = {
-        ...newAction,
-        infoTitle: '',
-        infoDescription: '',
-        hasAttachments: false,
-        data: {} // Initialize data
-      };
-    }
-
-    setFormData(prev => ({
-      ...prev,
-      actions: [...prev.actions, newAction as TaskAction],
-    }));
-  };
-
-  // NEW: Handle changes within an action
-  const handleActionChange = (actionId: string, field: keyof TaskAction, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      actions: prev.actions.map(action =>
-        action.id === actionId ? { ...action, [field]: value } : action
-      ),
-    }));
-  };
-
-  // Handle file uploads
-  const handleFileUpload = (actionId: string, event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    setAttachments(prev => ({
-      ...prev,
-      [actionId]: files
-    }));
   };
 
   const handleRemoveAction = (actionId: string) => {
@@ -187,13 +147,6 @@ export const CreateProjectTask: React.FC = () => {
       ...prev,
       actions: prev.actions.filter(action => action.id !== actionId)
     }));
-    
-    // Also remove any attachments for this action
-    setAttachments(prev => {
-      const newAttachments = { ...prev };
-      delete newAttachments[actionId];
-      return newAttachments;
-    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -204,34 +157,6 @@ export const CreateProjectTask: React.FC = () => {
     setError(null);
 
     try {
-      // Process any file uploads for info-type actions
-      const actionsWithAttachments = [...formData.actions];
-      
-      for (let i = 0; i < actionsWithAttachments.length; i++) {
-        const action = actionsWithAttachments[i];
-        if (action.type === 'info' && action.hasAttachments && attachments[action.id]) {
-          // Create a temporary ID for file uploads before task creation
-          const tempTaskId = 'temp_' + Date.now().toString();
-          
-          // Upload files for this action
-          const uploadPromises = attachments[action.id].map(file => 
-            taskService.uploadTaskAttachment(tempTaskId, file)
-          );
-          
-          const fileUrls = await Promise.all(uploadPromises);
-          
-          // Update the action with file URLs
-          actionsWithAttachments[i] = {
-            ...action,
-            data: {
-              ...action.data,
-              fileURLs: fileUrls
-            }
-          };
-        }
-      }
-
-      // Prepare the task data with proper typing
       const taskData: Omit<TaskSchema, 'id' | 'createdAt' | 'updatedAt'> = {
         title: formData.title,
         description: formData.description,
@@ -243,7 +168,7 @@ export const CreateProjectTask: React.FC = () => {
         status: 'pending',
         difficultyLevel: formData.difficultyLevel,
         coinsReward,
-        actions: actionsWithAttachments,
+        actions: formData.actions,
         createdBy: currentUser?.uid || '',
         subtasks: [],
         comments: [],
@@ -265,264 +190,297 @@ export const CreateProjectTask: React.FC = () => {
   return (
     <Layout role={currentUser?.role || 'admin'}>
       <div className="container mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
-          <button onClick={() => navigate(-1)} className="text-gray-600 hover:text-blue-600">
-            <ArrowLeft size={24} />
+        <div className="flex items-center mb-6">
+          <button 
+            onClick={() => navigate(-1)} 
+            className="mr-4 p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+            aria-label="Go back"
+          >
+            <ArrowLeft size={20} />
           </button>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-800 flex items-center">
+          <h1 className="text-2xl font-bold text-gray-800 flex items-center">
             <CheckCircle className="mr-3 text-blue-600" />
             Criar Nova Tarefa para {projectName}
           </h1>
-          <div></div>
         </div>
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative flex items-center mb-4">
-            <AlertTriangle className="mr-2" />
-            {error}
+          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg flex items-center mb-6">
+            <AlertTriangle className="mr-3 flex-shrink-0" size={20} />
+            <p>{error}</p>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Título
-            </label>
-            <input
-              type="text"
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${formErrors.title ? 'border-red-500' : 'focus:ring-blue-500'
-                }`}
-            />
-            {formErrors.title && (
-              <p className="text-red-500 text-xs mt-1">{formErrors.title}</p>
-            )}
+        <div className="bg-white rounded-xl shadow-md overflow-hidden">
+          <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-800">Informações da Tarefa</h2>
+            <p className="text-sm text-gray-600">Preencha os detalhes da nova tarefa</p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Descrição
-            </label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 h-24 ${formErrors.description ? 'border-red-500' : 'focus:ring-blue-500'
-                }`}
-            />
-            {formErrors.description && (
-              <p className="text-red-500 text-xs mt-1">{formErrors.description}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Responsável
-            </label>
-            <select
-              name="assignedTo"
-              value={formData.assignedTo}
-              onChange={handleChange}
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${formErrors.assignedTo ? 'border-red-500' : 'focus:ring-blue-500'
-                }`}
-            >
-              <option value="">Selecione um responsável</option>
-              {users.map(user => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
-                </option>
-              ))}
-            </select>
-            {formErrors.assignedTo && (
-              <p className="text-red-500 text-xs mt-1">{formErrors.assignedTo}</p>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Nível de Dificuldade (1-10)
-            </label>
-            <div className="flex space-x-2">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(level => (
-                <button
-                  key={level}
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, difficultyLevel: level }))}
-                  className={`px-3 py-1 rounded-full text-sm ${formData.difficultyLevel === level
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                >
-                  {level}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Data de Início
-              </label>
-              <input
-                type="date"
-                name="startDate"
-                value={formData.startDate}
-                onChange={handleChange}
-                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${formErrors.startDate ? 'border-red-500' : 'focus:ring-blue-500'
-                  }`}
-              />
-              {formErrors.startDate && (
-                <p className="text-red-500 text-xs mt-1">{formErrors.startDate}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Data de Vencimento
-              </label>
-              <input
-                type="date"
-                name="dueDate"
-                value={formData.dueDate}
-                onChange={handleChange}
-                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${formErrors.dueDate ? 'border-red-500' : 'focus:ring-blue-500'
-                  }`}
-              />
-              {formErrors.dueDate && (
-                <p className="text-red-500 text-xs mt-1">{formErrors.dueDate}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Action Templates */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Adicionar Ação de um Modelo
-            </label>
-            <div className="flex space-x-2">
-              <select
-                value={selectedTemplate}
-                onChange={(e) => setSelectedTemplate(e.target.value)}
-                className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Selecione um Modelo</option>
-                {templates.map(template => (
-                  <option key={template.id} value={template.id}>
-                    {template.title}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                onClick={handleAddActionFromTemplate}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                disabled={!selectedTemplate}
-              >
-                Adicionar
-              </button>
-            </div>
-          </div>
-
-          {/* Display Added Actions */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Ações
-            </label>
-            <div className="space-y-2">
-              {formData.actions.map((action) => (
-                <div key={action.id} className="border rounded-lg p-4 flex flex-col">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-medium text-gray-900">{action.title}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveAction(action.id)}
-                      className="text-red-500 hover:text-red-700"
-                      title="Remover ação"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                  
-                  {/* Display infoTitle if it's an 'info' type */}
-                  {action.type === 'info' && (
-                    <div className="space-y-2 mt-2">
-                      <input
-                        type="text"
-                        value={action.infoTitle || ''}
-                        onChange={(e) => handleActionChange(action.id, 'infoTitle', e.target.value)}
-                        placeholder="Título das Informações"
-                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300 text-gray-900"
-                      />
-                      <textarea
-                        value={action.infoDescription || ''}
-                        onChange={(e) => handleActionChange(action.id, 'infoDescription', e.target.value)}
-                        placeholder="Descrição das Informações"
-                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300 text-gray-900"
-                      />
-                      <label className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={action.hasAttachments || false}
-                          onChange={(e) => handleActionChange(action.id, 'hasAttachments', e.target.checked)}
-                          className="mr-2"
-                        />
-                        Requer arquivos?
-                      </label>
-                      
-                      {/* File upload section */}
-                      {action.hasAttachments && (
-                        <div className="mt-2">
-                          <input
-                            type="file"
-                            multiple
-                            onChange={(e) => handleFileUpload(action.id, e)}
-                            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300 text-gray-900"
-                          />
-                          
-                          {/* Display uploaded files */}
-                          {attachments[action.id] && attachments[action.id].length > 0 && (
-                            <div className="mt-2">
-                              <h4 className="font-semibold">Arquivos Carregados:</h4>
-                              <ul>
-                                {attachments[action.id].map((file, index) => (
-                                  <li key={index} className="flex items-center">
-                                    <File size={16} className="mr-1" />
-                                    {file.name}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
+          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <FileText size={16} className="mr-2 text-blue-600" />
+                    Título
+                  </label>
+                  <input
+                    type="text"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleChange}
+                    placeholder="Digite o título da tarefa"
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${formErrors.title ? 'border-red-500 focus:ring-red-500' : 'focus:ring-blue-500 border-gray-300'}`}
+                  />
+                  {formErrors.title && (
+                    <p className="text-red-500 text-xs mt-1">{formErrors.title}</p>
                   )}
                 </div>
-              ))}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <Users size={16} className="mr-2 text-blue-600" />
+                    Responsável
+                  </label>
+                  <select
+                    name="assignedTo"
+                    value={formData.assignedTo}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${formErrors.assignedTo ? 'border-red-500 focus:ring-red-500' : 'focus:ring-blue-500 border-gray-300'}`}
+                  >
+                    <option value="">Selecione um responsável</option>
+                    {users.map(user => (
+                      <option key={user.id} value={user.id}>
+                        {user.name}
+                      </option>
+                    ))}
+                  </select>
+                  {formErrors.assignedTo && (
+                    <p className="text-red-500 text-xs mt-1">{formErrors.assignedTo}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <Briefcase size={16} className="mr-2 text-blue-600" />
+                    Projeto
+                  </label>
+                  <input
+                    type="text"
+                    value={projectName}
+                    disabled
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 cursor-not-allowed"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <Flag size={16} className="mr-2 text-blue-600" />
+                    Prioridade
+                  </label>
+                  <select
+                    name="priority"
+                    value={formData.priority}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="low">Baixa</option>
+                    <option value="medium">Média</option>
+                    <option value="high">Alta</option>
+                    <option value="critical">Crítica</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <FileText size={16} className="mr-2 text-blue-600" />
+                    Descrição
+                  </label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleChange}
+                    placeholder="Descreva a tarefa em detalhes"
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 h-24 ${formErrors.description ? 'border-red-500 focus:ring-red-500' : 'focus:ring-blue-500 border-gray-300'}`}
+                  />
+                  {formErrors.description && (
+                    <p className="text-red-500 text-xs mt-1">{formErrors.description}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                      <Calendar size={16} className="mr-2 text-blue-600" />
+                      Data de Início
+                    </label>
+                    <input
+                      type="date"
+                      name="startDate"
+                      value={formData.startDate}
+                      onChange={handleChange}
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${formErrors.startDate ? 'border-red-500 focus:ring-red-500' : 'focus:ring-blue-500 border-gray-300'}`}
+                    />
+                    {formErrors.startDate && (
+                      <p className="text-red-500 text-xs mt-1">{formErrors.startDate}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                      <Clock size={16} className="mr-2 text-blue-600" />
+                      Data de Vencimento
+                    </label>
+                    <input
+                      type="date"
+                      name="dueDate"
+                      value={formData.dueDate}
+                      onChange={handleChange}
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${formErrors.dueDate ? 'border-red-500 focus:ring-red-500' : 'focus:ring-blue-500 border-gray-300'}`}
+                    />
+                    {formErrors.dueDate && (
+                      <p className="text-red-500 text-xs mt-1">{formErrors.dueDate}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                    <Award size={16} className="mr-2 text-blue-600" />
+                    Nível de Dificuldade ({formData.difficultyLevel})
+                  </label>
+                  <div className="flex items-center space-x-1">
+                    <span className="text-xs text-gray-500">Fácil</span>
+                    <input
+                      type="range"
+                      min="2"
+                      max="9"
+                      step="1"
+                      value={formData.difficultyLevel}
+                      onChange={(e) => setFormData(prev => ({ ...prev, difficultyLevel: parseInt(e.target.value) }))}
+                      className="flex-grow h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                    />
+                    <span className="text-xs text-gray-500">Difícil</span>
+                  </div>
+                  <div className="flex justify-between mt-1">
+                    <span className="text-xs text-gray-500">Recompensa: {coinsReward} moedas</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            
-            {/* Add manual action button */}
-            <button
-              type="button"
-              onClick={() => handleAddAction('info')}
-              className="mt-2 px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 flex items-center"
-            >
-              <Plus size={16} className="mr-1" /> Adicionar Informações Importantes
-            </button>
-          </div>
-          
-          <button
-            type="submit"
-            disabled={loading}
-            className={`w-full py-2 rounded-lg text-white transition ${loading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-              }`}
-          >
-            {loading ? 'Criando...' : 'Criar Tarefa'}
-          </button>
-        </form>
+
+            {/* Action Templates */}
+            <div className="border-t border-gray-200 pt-6">
+              <div className="flex justify-between items-center mb-4">
+                <label className="block text-sm font-medium text-gray-700 flex items-center">
+                  <CheckCircle size={16} className="mr-2 text-blue-600" />
+                  Ações da Tarefa
+                </label>
+                <div className="flex space-x-2">
+                  <Link
+                    to="/admin/action-templates/create"
+                    target="_blank"
+                    className="text-blue-600 text-sm hover:text-blue-800 flex items-center"
+                  >
+                    <Plus size={14} className="mr-1" />
+                    Criar Modelo
+                  </Link>
+                </div>
+              </div>
+              
+              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
+                <div className="flex space-x-2">
+                  <select
+                    value={selectedTemplate}
+                    onChange={(e) => setSelectedTemplate(e.target.value)}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Selecione um Modelo de Ação</option>
+                    {templates.map(template => (
+                      <option key={template.id} value={template.id}>
+                        {template.title}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleAddActionFromTemplate}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center"
+                    disabled={!selectedTemplate}
+                  >
+                    <Plus size={18} className="mr-1" /> Adicionar
+                  </button>
+                </div>
+              </div>
+
+              {/* Display Added Actions */}
+              <div className="space-y-3 max-h-60 overflow-y-auto">
+                {formData.actions.length === 0 ? (
+                  <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
+                    <p className="text-gray-500">Adicione ações do modelo para esta tarefa</p>
+                  </div>
+                ) : (
+                  formData.actions.map((action) => (
+                    <div key={action.id} className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center">
+                          <div className="bg-blue-100 p-2 rounded-full mr-3">
+                            <FileText size={16} className="text-blue-600" />
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-gray-900">{action.title}</h4>
+                            <p className="text-sm text-gray-500 line-clamp-1">{action.description}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAction(action.id)}
+                          className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-gray-100"
+                          title="Remover ação"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="border-t border-gray-200 pt-6 flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className={`px-6 py-2 rounded-lg text-white transition flex items-center ${loading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+              >
+                {loading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Criando...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="mr-2" size={18} /> Criar Tarefa
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </Layout>
-  )
+  );
 }
