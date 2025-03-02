@@ -23,7 +23,8 @@ import {
   Zap,
   Star,
   Bookmark,
-  Trash2
+  Trash2,
+  AlertCircle
 } from 'lucide-react'
 import { projectService } from '../../services/ProjectService'
 import { taskService } from '../../services/TaskService'
