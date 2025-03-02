@@ -12,9 +12,10 @@ import {
   Calendar,
   Users,
   Filter,
-  AlertCircle,
+  AlertTriangle,
   RefreshCw,
-  Briefcase
+  Briefcase,
+  Clock
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { ProjectSchema } from '../../types/firestore-schema'
@@ -23,6 +24,7 @@ import { CreateProjectModal } from '../../components/modals/CreateProjectModal'
 import { EditProjectModal } from '../../components/modals/EditProjectModal'
 import { DeleteConfirmationModal } from '../../components/modals/DeleteConfirmationModal'
 import useDebounce from '../../utils/useDebounce'
+import { PageHeader } from '../../components/PageHeader'
 
 // Define a type for the filter status that includes empty string
 type FilterStatus = ProjectSchema['status'] | '';
@@ -194,6 +196,22 @@ export const ProjectManagement: React.FC = () => {
     return progressMap[project.status] || 0;
   };
 
+  const getTimeRemaining = (project: ProjectSchema): string => {
+    if (!project.endDate) return 'Sem prazo definido';
+    
+    const now = new Date().getTime();
+    const endDate = project.endDate;
+    
+    if (now > endDate) return 'Prazo encerrado';
+    
+    const diffTime = Math.abs(endDate - now);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Termina hoje';
+    if (diffDays === 1) return 'Termina amanhã';
+    return `${diffDays} dias restantes`;
+  };
+
   const filteredProjects = projects.filter((project) =>
     project.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
     project.description.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
@@ -201,31 +219,28 @@ export const ProjectManagement: React.FC = () => {
 
   return (
     <Layout role="admin" isLoading={isLoading}>
-      <div className="container mx-auto p-6">
-        <div className="space-y-6">
-          {/* Header with Title and Create Button */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
-                Gerenciamento de Projetos
-              </h1>
-              <p className="text-gray-500 text-sm mt-1">
-                Gerencie e acompanhe todos os projetos do sistema
-              </p>
-            </div>
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-700 transition shadow-sm"
-            >
-              <Plus className="mr-2" size={18} /> Adicionar Projeto
-            </button>
-          </div>
+      <div className="container mx-auto px-4 sm:px-6 py-6">
+        <div className="space-y-4 sm:space-y-6">
+          {/* Page Header */}
+          <PageHeader
+            title="Gerenciamento de Projetos"
+            description="Gerencie e acompanhe todos os projetos do sistema"
+            icon={Briefcase}
+            actions={
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-700 transition shadow-sm w-full sm:w-auto justify-center"
+              >
+                <Plus className="mr-2" size={18} /> Adicionar Projeto
+              </button>
+            }
+          />
 
           {/* Error Message with Retry Button */}
           {error && (
-            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md shadow-sm flex justify-between items-center">
+            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <div className="flex items-center">
-                <AlertCircle className="mr-2 flex-shrink-0" size={20} />
+                <AlertTriangle className="mr-2 flex-shrink-0" size={20} />
                 <p>{error}</p>
               </div>
               <button 
@@ -248,7 +263,7 @@ export const ProjectManagement: React.FC = () => {
 
           {/* Filters Section */}
           <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-            <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               {/* Search Input */}
               <div className="relative flex-grow">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -264,14 +279,14 @@ export const ProjectManagement: React.FC = () => {
               </div>
 
               {/* Status Filter */}
-              <div className="relative">
+              <div className="relative w-full sm:w-auto">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Filter className="text-gray-400" size={18} />
                 </div>
                 <select
                   value={filter.status}
                   onChange={(e) => setFilter({ status: e.target.value as FilterStatus })}
-                  className="pl-10 pr-8 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 appearance-none"
+                  className="w-full sm:w-auto pl-10 pr-8 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 appearance-none"
                 >
                   <option value="">Todos os Status</option>
                   <option value="planning">Planejamento</option>
@@ -287,7 +302,7 @@ export const ProjectManagement: React.FC = () => {
 
           {/* Project Cards Grid */}
           {filteredProjects.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-sm p-8 text-center border border-gray-100">
+            <div className="bg-white rounded-xl shadow-sm p-6 sm:p-8 text-center border border-gray-100">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Briefcase className="text-gray-400" size={24} />
               </div>
@@ -305,16 +320,16 @@ export const ProjectManagement: React.FC = () => {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {filteredProjects.map((project) => (
                 <div 
                   key={project.id} 
                   className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition group"
                 >
                   {/* Project Header */}
-                  <div className="p-6 border-b border-gray-100">
-                    <div className="flex justify-between items-start mb-3">
-                      <h2 className="text-lg font-semibold text-gray-800 group-hover:text-blue-600 transition line-clamp-1">
+                  <div className="p-4 sm:p-6 border-b border-gray-100">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-3">
+                      <h2 className="text-base sm:text-lg font-semibold text-gray-800 group-hover:text-blue-600 transition line-clamp-1">
                         <Link to={`/admin/projects/${project.id}`}>{project.name}</Link>
                       </h2>
                       <StatusBadge status={project.status} />
@@ -328,14 +343,20 @@ export const ProjectManagement: React.FC = () => {
                         style={{ width: `${getProjectProgress(project)}%` }}
                       />
                     </div>
-                    <div className="flex justify-end">
+                    <div className="flex justify-between items-center">
                       <span className="text-xs text-gray-500">{getProjectProgress(project)}% Completo</span>
+                      {project.endDate && (
+                        <span className="text-xs flex items-center text-gray-500">
+                          <Clock size={12} className="mr-1" />
+                          {getTimeRemaining(project)}
+                        </span>
+                      )}
                     </div>
                   </div>
                   
                   {/* Project Details */}
-                  <div className="px-6 py-4 bg-gray-50">
-                    <div className="flex justify-between items-center mb-3">
+                  <div className="px-4 sm:px-6 py-4 bg-gray-50">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3">
                       <div className="flex items-center text-sm text-gray-600">
                         <Calendar size={16} className="mr-2 text-gray-500" />
                         <span>
@@ -391,11 +412,11 @@ export const ProjectManagement: React.FC = () => {
 
           {/* Pagination */}
           {filteredProjects.length > 0 && (
-            <div className="flex justify-between items-center mt-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-              <span className="text-sm text-gray-600">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+              <span className="text-sm text-gray-600 order-2 sm:order-1">
                 Página {currentPage} de {totalPages}
               </span>
-              <div className="flex space-x-2">
+              <div className="flex space-x-2 w-full sm:w-auto justify-between sm:justify-start order-1 sm:order-2">
                 <button
                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
