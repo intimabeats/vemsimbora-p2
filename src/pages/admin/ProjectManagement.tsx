@@ -25,6 +25,7 @@ import {
 import { Link } from 'react-router-dom'
 import { ProjectSchema } from '../../types/firestore-schema'
 import { projectService } from '../../services/ProjectService'
+import { taskService } from '../../services/TaskService'
 import { CreateProjectModal } from '../../components/modals/CreateProjectModal'
 import { EditProjectModal } from '../../components/modals/EditProjectModal'
 import { DeleteConfirmationModal } from '../../components/modals/DeleteConfirmationModal'
@@ -55,6 +56,9 @@ export const ProjectManagement: React.FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isRetrying, setIsRetrying] = useState(false)
+  
+  // Store project progress data
+  const [projectProgress, setProjectProgress] = useState<{[projectId: string]: number}>({})
 
   // useCallback to prevent unnecessary re-renders of fetchProjects
   const fetchProjects = useCallback(async () => {
@@ -83,6 +87,24 @@ export const ProjectManagement: React.FC = () => {
       const fetchedProjects = await projectService.fetchProjects(options);
       setProjects(fetchedProjects.data);
       setTotalPages(fetchedProjects.totalPages || 1); // Ensure at least 1 page
+      
+      // Fetch tasks for each project to calculate progress
+      const progressData: {[projectId: string]: number} = {};
+      
+      await Promise.all(fetchedProjects.data.map(async (project) => {
+        const tasksResponse = await taskService.fetchTasks({ projectId: project.id });
+        const tasks = tasksResponse.data;
+        
+        if (tasks.length === 0) {
+          progressData[project.id] = 0;
+        } else {
+          const completedTasks = tasks.filter(task => task.status === 'completed').length;
+          progressData[project.id] = Math.round((completedTasks / tasks.length) * 100);
+        }
+      }));
+      
+      setProjectProgress(progressData);
+      
     } catch (error: any) {
       console.error('Error fetching projects:', error);
       setError(error.message || 'Failed to load projects. Please try again.');
@@ -186,20 +208,6 @@ export const ProjectManagement: React.FC = () => {
       </span>
     )
   }
-
-  const getProjectProgress = (project: ProjectSchema): number => {
-    // This is a placeholder. In a real app, you would calculate this based on completed tasks
-    const progressMap: Record<ProjectSchema['status'], number> = {
-      planning: 10,
-      active: 50,
-      completed: 100,
-      paused: 70,
-      cancelled: 30,
-      archived: 100
-    };
-    
-    return progressMap[project.status] || 0;
-  };
 
   const getTimeRemaining = (project: ProjectSchema): string => {
     if (!project.endDate) return 'Sem prazo definido';
@@ -388,13 +396,13 @@ export const ProjectManagement: React.FC = () => {
                     <div className="w-full bg-gray-200 rounded-full h-2 mb-2 overflow-hidden">
                       <div
                         className="h-2 rounded-full transition-all duration-500 bg-gradient-to-r from-blue-500 to-indigo-600"
-                        style={{ width: `${getProjectProgress(project)}%` }}
+                        style={{ width: `${projectProgress[project.id] || 0}%` }}
                       />
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-xs text-gray-500 flex items-center">
                         <BarChart2 size={12} className="mr-1" />
-                        {getProjectProgress(project)}% Completo
+                        {projectProgress[project.id] || 0}% Completo
                       </span>
                       {project.endDate && (
                         <span className={`text-xs flex items-center ${getPriorityColor(project)}`}>
