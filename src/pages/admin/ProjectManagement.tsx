@@ -1,3 +1,4 @@
+// src/pages/admin/ProjectManagement.tsx
 import React, { useState, useEffect, useCallback } from 'react'
 import { Layout } from '../../components/Layout'
 import {
@@ -15,7 +16,11 @@ import {
   AlertTriangle,
   RefreshCw,
   Briefcase,
-  Clock
+  Clock,
+  BarChart2,
+  Star,
+  Zap,
+  Bookmark
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { ProjectSchema } from '../../types/firestore-schema'
@@ -158,11 +163,11 @@ export const ProjectManagement: React.FC = () => {
 
   const StatusBadge: React.FC<{ status: ProjectSchema['status'] }> = ({ status }) => {
     const statusStyles = {
-      planning: 'bg-yellow-100 text-yellow-800 border border-yellow-200',
-      active: 'bg-green-100 text-green-800 border border-green-200',
+      planning: 'bg-amber-100 text-amber-800 border border-amber-200',
+      active: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
       completed: 'bg-blue-100 text-blue-800 border border-blue-200',
-      paused: 'bg-gray-100 text-gray-800 border border-gray-200',
-      cancelled: 'bg-red-100 text-red-800 border border-red-200',
+      paused: 'bg-slate-100 text-slate-800 border border-slate-200',
+      cancelled: 'bg-rose-100 text-rose-800 border border-rose-200',
       archived: 'bg-gray-400 text-white border border-gray-500'
     }
 
@@ -212,6 +217,43 @@ export const ProjectManagement: React.FC = () => {
     return `${diffDays} dias restantes`;
   };
 
+  // Get priority color based on days remaining
+  const getPriorityColor = (project: ProjectSchema): string => {
+    if (!project.endDate) return 'text-gray-400';
+    
+    const now = new Date().getTime();
+    const endDate = project.endDate;
+    
+    if (now > endDate) return 'text-red-500';
+    
+    const diffTime = Math.abs(endDate - now);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays <= 3) return 'text-red-500';
+    if (diffDays <= 7) return 'text-amber-500';
+    return 'text-emerald-500';
+  };
+
+  // Get status icon
+  const getStatusIcon = (status: ProjectSchema['status']) => {
+    switch (status) {
+      case 'planning':
+        return <Bookmark className="text-amber-500" />;
+      case 'active':
+        return <Zap className="text-emerald-500" />;
+      case 'completed':
+        return <Star className="text-blue-500" />;
+      case 'paused':
+        return <Clock className="text-slate-500" />;
+      case 'cancelled':
+        return <AlertTriangle className="text-rose-500" />;
+      case 'archived':
+        return <Archive className="text-gray-500" />;
+      default:
+        return <Briefcase className="text-gray-500" />;
+    }
+  };
+
   const filteredProjects = projects.filter((project) =>
     project.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
     project.description.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
@@ -229,7 +271,7 @@ export const ProjectManagement: React.FC = () => {
             actions={
               <button
                 onClick={() => setIsCreateModalOpen(true)}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-700 transition shadow-sm w-full sm:w-auto justify-center"
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg flex items-center hover:from-blue-700 hover:to-indigo-700 transition shadow-sm w-full sm:w-auto justify-center"
               >
                 <Plus className="mr-2" size={18} /> Adicionar Projeto
               </button>
@@ -238,7 +280,7 @@ export const ProjectManagement: React.FC = () => {
 
           {/* Error Message with Retry Button */}
           {error && (
-            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded-md shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <div className="flex items-center">
                 <AlertTriangle className="mr-2 flex-shrink-0" size={20} />
                 <p>{error}</p>
@@ -314,9 +356,9 @@ export const ProjectManagement: React.FC = () => {
               </p>
               <button
                 onClick={() => setIsCreateModalOpen(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition inline-flex items-center"
+                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition inline-flex items-center"
               >
-                <Plus size={18} className="mr-2" /> Criar Projeto
+                <Plus className="mr-2" size={18} /> Criar Projeto
               </button>
             </div>
           ) : (
@@ -327,26 +369,35 @@ export const ProjectManagement: React.FC = () => {
                   className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition group"
                 >
                   {/* Project Header */}
-                  <div className="p-4 sm:p-6 border-b border-gray-100">
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-3">
-                      <h2 className="text-base sm:text-lg font-semibold text-gray-800 group-hover:text-blue-600 transition line-clamp-1">
-                        <Link to={`/admin/projects/${project.id}`}>{project.name}</Link>
-                      </h2>
-                      <StatusBadge status={project.status} />
+                  <div className="p-4 sm:p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-start space-x-3">
+                        <div className="p-2 rounded-lg bg-gray-50">
+                          {getStatusIcon(project.status)}
+                        </div>
+                        <div>
+                          <h2 className="text-base sm:text-lg font-semibold text-gray-800 group-hover:text-blue-600 transition line-clamp-1">
+                            <Link to={`/admin/projects/${project.id}`}>{project.name}</Link>
+                          </h2>
+                        </div>
+                      </div>
                     </div>
                     <p className="text-gray-600 mb-4 line-clamp-2 text-sm">{project.description}</p>
                     
-                    {/* Progress Bar */}
-                    <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                    {/* Progress Bar with Gradient */}
+                    <div className="w-full bg-gray-200 rounded-full h-2 mb-2 overflow-hidden">
                       <div
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-500"
+                        className="h-2 rounded-full transition-all duration-500 bg-gradient-to-r from-blue-500 to-indigo-600"
                         style={{ width: `${getProjectProgress(project)}%` }}
                       />
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-xs text-gray-500">{getProjectProgress(project)}% Completo</span>
+                      <span className="text-xs text-gray-500 flex items-center">
+                        <BarChart2 size={12} className="mr-1" />
+                        {getProjectProgress(project)}% Completo
+                      </span>
                       {project.endDate && (
-                        <span className="text-xs flex items-center text-gray-500">
+                        <span className={`text-xs flex items-center ${getPriorityColor(project)}`}>
                           <Clock size={12} className="mr-1" />
                           {getTimeRemaining(project)}
                         </span>
@@ -435,7 +486,7 @@ export const ProjectManagement: React.FC = () => {
             </div>
           )}
 
-          {/* Modais */}
+          {/* Modals */}
           <CreateProjectModal
             isOpen={isCreateModalOpen}
             onClose={() => setIsCreateModalOpen(false)}

@@ -19,7 +19,11 @@ import {
   Eye,
   Calendar,
   Users as UsersIcon,
-  AlertCircle
+  AlertTriangle,
+  Zap,
+  Star,
+  Bookmark,
+  Trash2
 } from 'lucide-react'
 import { projectService } from '../../services/ProjectService'
 import { taskService } from '../../services/TaskService'
@@ -67,7 +71,7 @@ const FileItem: React.FC<{
       <a
         href={attachment.url}
         download={attachment.name}
-        className="mt-2 px-4 py-1 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors flex items-center"
+        className="mt-2 px-4 py-1 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transition-colors flex items-center"
       >
         <Download size={14} className="mr-1" /> Download
       </a>
@@ -180,6 +184,26 @@ export const ProjectDetails: React.FC = () =>
       .join(', ');
   };
 
+  // Get status icon
+  const getStatusIcon = (status: ProjectSchema['status']) => {
+    switch (status) {
+      case 'planning':
+        return <Bookmark className="text-amber-500" />;
+      case 'active':
+        return <Zap className="text-emerald-500" />;
+      case 'completed':
+        return <Star className="text-blue-500" />;
+      case 'paused':
+        return <Clock className="text-slate-500" />;
+      case 'cancelled':
+        return <AlertCircle className="text-rose-500" />;
+      case 'archived':
+        return <File className="text-gray-500" />;
+      default:
+        return null;
+    }
+  };
+
   if (isLoading) {
     return (
       <Layout role="admin" isLoading={true}>
@@ -231,12 +255,12 @@ export const ProjectDetails: React.FC = () =>
 
   const StatusBadge: React.FC<{ status: ProjectSchema['status'] }> = ({ status }) => {
     const statusStyles = {
-      planning: 'bg-yellow-100 text-yellow-800',
-      active: 'bg-green-100 text-green-800',
-      completed: 'bg-blue-100 text-blue-800',
-      paused: 'bg-gray-100 text-gray-800',
-      cancelled: 'bg-red-100 text-red-800',
-      archived: 'bg-gray-400 text-white'
+      planning: 'bg-amber-100 text-amber-800 border border-amber-200',
+      active: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+      completed: 'bg-blue-100 text-blue-800 border border-blue-200',
+      paused: 'bg-slate-100 text-slate-800 border border-slate-200',
+      cancelled: 'bg-rose-100 text-rose-800 border border-rose-200',
+      archived: 'bg-gray-400 text-white border border-gray-500'
     }
 
     const statusLabels = {
@@ -257,11 +281,11 @@ export const ProjectDetails: React.FC = () =>
 
   const TaskStatusBadge: React.FC<{ status: TaskSchema['status'] }> = ({ status }) => {
     const statusStyles = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      in_progress: 'bg-blue-100 text-blue-800',
-      waiting_approval: 'bg-purple-100 text-purple-800',
-      completed: 'bg-green-100 text-green-800',
-      blocked: 'bg-red-100 text-red-800'
+      pending: 'bg-amber-100 text-amber-800 border border-amber-200',
+      in_progress: 'bg-blue-100 text-blue-800 border border-blue-200',
+      waiting_approval: 'bg-purple-100 text-purple-800 border border-purple-200',
+      completed: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+      blocked: 'bg-rose-100 text-rose-800 border border-rose-200'
     }
 
     const statusLabels = {
@@ -291,8 +315,8 @@ export const ProjectDetails: React.FC = () =>
             <ArrowLeft className="mr-2" /> Voltar para Projetos
           </button>
           <button
-            onClick={() => navigate(`/admin/projects/${project.id}/chat`)}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            onClick={() => navigate(`/admin/projects/${projectId}/chat`)}
+            className="flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition shadow-sm"
           >
             <MessageCircle className="mr-2" size={20} />
             Chat do Projeto
@@ -300,11 +324,16 @@ export const ProjectDetails: React.FC = () =>
         </div>
 
         {/* Project Header */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
-              <p className="text-gray-600 mt-2">{project.description}</p>
+        <div className="bg-white rounded-xl shadow-md p-6 mb-6 border border-gray-100">
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex items-start space-x-4">
+              <div className="p-3 bg-gray-50 rounded-lg">
+                {getStatusIcon(project.status)}
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
+                <p className="text-gray-600 mt-2">{project.description}</p>
+              </div>
             </div>
             <div className="flex items-center space-x-4">
               <StatusBadge status={project.status} />
@@ -362,9 +391,9 @@ export const ProjectDetails: React.FC = () =>
                 {calculateProjectProgress()}%
               </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
+            <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
               <div
-                className="bg-blue-600 h-2.5 rounded-full transition-all duration-500"
+                className="bg-gradient-to-r from-blue-500 to-indigo-600 h-2.5 rounded-full transition-all duration-500"
                 style={{ width: `${calculateProjectProgress()}%` }}
               />
             </div>
@@ -372,7 +401,7 @@ export const ProjectDetails: React.FC = () =>
         </div>
 
         {/* Tasks Section */}
-        <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+        <div className="bg-white rounded-xl shadow-md p-6 mb-6 border border-gray-100">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold flex items-center">
               <CheckCircle className="mr-2 text-blue-600" /> Tarefas do Projeto
@@ -380,7 +409,7 @@ export const ProjectDetails: React.FC = () =>
             {/* Create Task Button - Link to the new page */}
             <Link
               to={`/admin/projects/${projectId}/create-task`}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-blue-700 transition"
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-lg flex items-center hover:from-blue-700 hover:to-indigo-700 transition shadow-sm"
             >
               <Plus className="mr-2" /> Criar Tarefa
             </Link>
@@ -397,7 +426,7 @@ export const ProjectDetails: React.FC = () =>
               {/* Pending Tasks */}
               <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                 <h3 className="font-medium text-gray-700 mb-3 flex items-center">
-                  <Clock className="mr-2 text-yellow-500" size={18} />
+                  <Clock className="mr-2 text-amber-500" size={18} />
                   Pendentes ({tasksByStatus.pending?.length || 0})
                 </h3>
                 <div className="space-y-3">
@@ -436,7 +465,7 @@ export const ProjectDetails: React.FC = () =>
                           {new Date(task.dueDate).toLocaleDateString()}
                         </span>
                         <div className="flex items-center">
-                          <span className="text-yellow-600 font-medium mr-1">{task.coinsReward}</span>
+                          <span className="text-amber-600 font-medium mr-1">{task.coinsReward}</span>
                           <span>🪙</span>
                         </div>
                       </div>
@@ -490,7 +519,7 @@ export const ProjectDetails: React.FC = () =>
                           {new Date(task.dueDate).toLocaleDateString()}
                         </span>
                         <div className="flex items-center">
-                          <span className="text-yellow-600 font-medium mr-1">{task.coinsReward}</span>
+                          <span className="text-amber-600 font-medium mr-1">{task.coinsReward}</span>
                           <span>🪙</span>
                         </div>
                       </div>
@@ -544,7 +573,7 @@ export const ProjectDetails: React.FC = () =>
                           {new Date(task.dueDate).toLocaleDateString()}
                         </span>
                         <div className="flex items-center">
-                          <span className="text-yellow-600 font-medium mr-1">{task.coinsReward}</span>
+                          <span className="text-amber-600 font-medium mr-1">{task.coinsReward}</span>
                           <span>🪙</span>
                         </div>
                       </div>
@@ -559,7 +588,7 @@ export const ProjectDetails: React.FC = () =>
               {/* Completed Tasks */}
               <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                 <h3 className="font-medium text-gray-700 mb-3 flex items-center">
-                  <CheckCircle className="mr-2 text-green-500" size={18} />
+                  <CheckCircle className="mr-2 text-emerald-500" size={18} />
                   Concluídas ({tasksByStatus.completed?.length || 0})
                 </h3>
                 <div className="space-y-3">
@@ -591,7 +620,7 @@ export const ProjectDetails: React.FC = () =>
                           {new Date(task.dueDate).toLocaleDateString()}
                         </span>
                         <div className="flex items-center">
-                          <span className="text-yellow-600 font-medium mr-1">{task.coinsReward}</span>
+                          <span className="text-amber-600 font-medium mr-1">{task.coinsReward}</span>
                           <span>🪙</span>
                         </div>
                       </div>
@@ -608,7 +637,7 @@ export const ProjectDetails: React.FC = () =>
 
         {/* Files Section */}
         {attachments.length > 0 && (
-          <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+          <div className="bg-white rounded-xl shadow-md p-6 mb-6 border border-gray-100">
             <h2 className="text-xl font-semibold mb-4 flex items-center">
               <File className="mr-2 text-blue-600" /> Arquivos do Projeto
             </h2>
@@ -621,7 +650,7 @@ export const ProjectDetails: React.FC = () =>
         )}
 
         {/* Team Members Section */}
-        <div className="bg-white rounded-xl shadow-md p-6">
+        <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
           <h2 className="text-xl font-semibold mb-4 flex items-center">
             <UsersIcon className="mr-2 text-blue-600" /> Equipe do Projeto
           </h2>
@@ -629,7 +658,7 @@ export const ProjectDetails: React.FC = () =>
             {project.managers.map((managerId) => {
               const manager = users[managerId];
               return (
-                <div key={managerId} className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div key={managerId} className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200 hover:shadow-sm transition-shadow">
                   <img
                     src={manager?.profileImage || getDefaultProfileImage(manager?.name)}
                     alt={manager?.name || 'Unknown Manager'}
@@ -648,7 +677,7 @@ export const ProjectDetails: React.FC = () =>
             ).map(userId => {
               const user = users[userId];
               return (
-                <div key={userId} className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div key={userId} className="flex items-center p-3 bg-gray-50 rounded-lg border border-gray-200 hover:shadow-sm transition-shadow">
                   <img
                     src={user?.profileImage || getDefaultProfileImage(user?.name)}
                     alt={user?.name || 'Unknown User'}
