@@ -20,7 +20,7 @@ import { projectService } from '../../services/ProjectService'
 import { userManagementService } from '../../services/UserManagementService'
 import { TaskSchema } from '../../types/firestore-schema'
 import { DeleteConfirmationModal } from '../../components/modals/DeleteConfirmationModal'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import useDebounce from '../../utils/useDebounce';
 import { PageHeader } from '../../components/PageHeader'
 
@@ -48,7 +48,7 @@ export const TaskManagement: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1)
   const ITEMS_PER_PAGE = 9
 
-  // Fetch projects
+  // useCallback to prevent unnecessary re-renders of fetchProjects
   const fetchProjects = useCallback(async () => {
     try {
       const fetchedProjects = await projectService.fetchProjects({excludeStatus: 'archived'});
@@ -151,6 +151,18 @@ export const TaskManagement: React.FC = () => {
   const handleRetry = () => {
     setIsRetrying(true);
     loadData();
+  };
+
+  // Helper function to get task progress percentage based on status
+  const getTaskProgress = (status: TaskSchema['status']): number => {
+    switch (status) {
+      case 'completed': return 100;
+      case 'waiting_approval': return 75;
+      case 'in_progress': return 50;
+      case 'pending': return 25;
+      case 'blocked': return 10;
+      default: return 0;
+    }
   };
 
   return (
@@ -264,6 +276,7 @@ export const TaskManagement: React.FC = () => {
               {filteredTasks.map((task) => {
                 const project = projects.find(p => p.id === task.projectId);
                 const assignedUserName = users[task.assignedTo] || 'N/A';
+                const progress = getTaskProgress(task.status);
                 
                 return (
                   <div 
@@ -280,16 +293,19 @@ export const TaskManagement: React.FC = () => {
                       </div>
                       <p className="text-gray-600 mb-4 line-clamp-2 text-sm">{task.description}</p>
                       
-                      {/* Progress Bar */}
-                      <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                      {/* Progress Bar with Gradient - Updated to match project style */}
+                      <div className="w-full bg-gray-200 rounded-full h-2 mb-2 overflow-hidden">
                         <div
-                          className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                          style={{ width: `${task.status === 'completed' ? 100 : task.status === 'waiting_approval' ? 75 : task.status === 'in_progress' ? 50 : 25}%` }}
+                          className="h-2 rounded-full transition-all duration-500 bg-gradient-to-r from-blue-500 to-indigo-600"
+                          style={{ width: `${progress}%` }}
                         />
                       </div>
-                      <div className="flex justify-end">
-                        <span className="text-xs text-gray-500">
-                          {task.status === 'completed' ? '100' : task.status === 'waiting_approval' ? '75' : task.status === 'in_progress' ? '50' : '25'}% Completo
+                      <div className="flex justify-between">
+                        <span className="text-xs text-gray-500 flex items-center">
+                          {progress}% Completo
+                        </span>
+                        <span className="text-xs text-yellow-600 font-medium flex items-center">
+                          {task.coinsReward} 🪙
                         </span>
                       </div>
                     </div>
