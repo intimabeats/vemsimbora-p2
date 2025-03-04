@@ -927,3 +927,5 @@ export const CreateActionTemplate: React.FC = () => {
         </div>
       )}
     </Layout>
+ );
+}

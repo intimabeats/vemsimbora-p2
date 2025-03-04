@@ -1,3 +1,4 @@
+// src/components/ActionView.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { TaskAction } from '../types/firestore-schema';
 import { 
@@ -190,6 +191,7 @@ export const ActionView: React.FC<ActionViewProps> = ({
                 onChange={(e) => handleChange('infoTitle', e.target.value)}
                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300"
                 placeholder="Ex: Instruções Importantes"
+                readOnly={!isEditMode}
               />
             </div>
             <div>
@@ -202,20 +204,25 @@ export const ActionView: React.FC<ActionViewProps> = ({
                 onChange={(e) => handleChange('infoDescription', e.target.value)}
                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300 min-h-[100px]"
                 placeholder="Descreva as informações importantes aqui..."
+                readOnly={!isEditMode}
               />
             </div>
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="hasAttachments"
-                checked={editedAction.hasAttachments || false}
-                onChange={(e) => handleChange('hasAttachments', e.target.checked)}
-                className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor="hasAttachments" className="text-sm text-gray-700">
-                Requer anexos
-              </label>
-            </div>
+            {(isEditMode || editedAction.hasAttachments) && (
+              <div className="flex items-center">
+                {isEditMode && (
+                  <input
+                    type="checkbox"
+                    id="hasAttachments"
+                    checked={editedAction.hasAttachments || false}
+                    onChange={(e) => handleChange('hasAttachments', e.target.checked)}
+                    className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                )}
+                <label htmlFor="hasAttachments" className="text-sm text-gray-700">
+                  {editedAction.hasAttachments ? "Anexos necessários" : "Sem anexos"}
+                </label>
+              </div>
+            )}
             
             {editedAction.hasAttachments && (
               <div className="mt-2 space-y-3">
@@ -300,7 +307,7 @@ export const ActionView: React.FC<ActionViewProps> = ({
         return (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Texto
+              {editedAction.title || "Texto"}
             </label>
             <input
               type="text"
@@ -316,7 +323,7 @@ export const ActionView: React.FC<ActionViewProps> = ({
         return (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Texto Longo
+              {editedAction.title || "Texto Longo"}
             </label>
             <textarea
               ref={textAreaRef}
@@ -332,7 +339,7 @@ export const ActionView: React.FC<ActionViewProps> = ({
         return (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Upload de Arquivo
+              {editedAction.title || "Upload de Arquivo"}
             </label>
             <div className="flex items-center justify-center w-full">
               <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
@@ -381,7 +388,7 @@ export const ActionView: React.FC<ActionViewProps> = ({
         return (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Data
+              {editedAction.title || "Data"}
             </label>
             <input
               type="date"
@@ -391,6 +398,47 @@ export const ActionView: React.FC<ActionViewProps> = ({
             />
           </div>
         );
+      
+      case 'document':
+        if (editedAction.data?.steps && Array.isArray(editedAction.data.steps)) {
+          return (
+            <div className="space-y-4">
+              <h3 className="font-medium text-gray-800">{editedAction.title}</h3>
+              {editedAction.data.steps.map((step: any, index: number) => (
+                <div key={index} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <h4 className="font-medium text-gray-700 mb-2">{step.title || `Etapa ${index + 1}`}</h4>
+                  {step.type === 'text' ? (
+                    <input
+                      type="text"
+                      value={step.value || ''}
+                      onChange={(e) => {
+                        const newSteps = [...editedAction.data!.steps];
+                        newSteps[index].value = e.target.value;
+                        handleChange('data', { ...editedAction.data, steps: newSteps });
+                      }}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300"
+                      placeholder={step.placeholder || "Digite aqui..."}
+                    />
+                  ) : step.type === 'long_text' ? (
+                    <textarea
+                      value={step.value || ''}
+                      onChange={(e) => {
+                        const newSteps = [...editedAction.data!.steps];
+                        newSteps[index].value = e.target.value;
+                        handleChange('data', { ...editedAction.data, steps: newSteps });
+                      }}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300 min-h-[100px]"
+                      placeholder={step.placeholder || "Digite o texto detalhado aqui..."}
+                    />
+                  ) : (
+                    <p className="text-gray-600">{step.description}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          );
+        }
+        return null;
       
       default:
         return null;
@@ -432,54 +480,61 @@ export const ActionView: React.FC<ActionViewProps> = ({
         )}
         
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Título
-            </label>
-            <input
-              type="text"
-              value={editedAction.title}
-              onChange={(e) => handleChange('title', e.target.value)}
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300"
-              placeholder="Título da ação"
-            />
-          </div>
-          
-          {/* Type selection - disabled in edit mode */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tipo
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { type: 'text', label: 'Texto', icon: <Type size={16} /> },
-                { type: 'long_text', label: 'Texto Longo', icon: <FileText size={16} /> },
-                { type: 'info', label: 'Informação', icon: <Info size={16} /> },
-                { type: 'file_upload', label: 'Arquivo', icon: <Image size={16} /> },
-                { type: 'date', label: 'Data', icon: <Calendar size={16} /> }
-              ].map(item => (
-                <button
-                  key={item.type}
-                  type="button"
-                  onClick={() => !isEditMode && handleChange('type', item.type)}
-                  disabled={isEditMode}
-                  className={`p-2 rounded-md flex flex-col items-center justify-center ${
-                    editedAction.type === item.type 
-                      ? 'bg-blue-100 text-blue-700 border-blue-300 border' 
-                      : isEditMode 
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {item.icon}
-                  <span className="text-xs mt-1">{item.label}</span>
-                </button>
-              ))}
+          {!isEditMode && (
+            <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 mb-4">
+              <h3 className="font-medium text-blue-800 mb-1">{editedAction.title}</h3>
+              {editedAction.description && (
+                <p className="text-sm text-blue-700">{editedAction.description}</p>
+              )}
             </div>
-            {isEditMode && (
-              <p className="text-xs text-gray-500 mt-1">O tipo não pode ser alterado no modo de edição.</p>
-            )}
-          </div>
+          )}
+          
+          {isEditMode && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Título
+              </label>
+              <input
+                type="text"
+                value={editedAction.title}
+                onChange={(e) => handleChange('title', e.target.value)}
+                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300"
+                placeholder="Título da ação"
+              />
+            </div>
+          )}
+          
+          {/* Type selection - only visible in edit mode */}
+          {isEditMode && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tipo
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { type: 'text', label: 'Texto', icon: <Type size={16} /> },
+                  { type: 'long_text', label: 'Texto Longo', icon: <FileText size={16} /> },
+                  { type: 'info', label: 'Informação', icon: <Info size={16} /> },
+                  { type: 'file_upload', label: 'Arquivo', icon: <Image size={16} /> },
+                  { type: 'date', label: 'Data', icon: <Calendar size={16} /> }
+                ].map(item => (
+                  <button
+                    key={item.type}
+                    type="button"
+                    onClick={() => handleChange('type', item.type)}
+                    className={`p-2 rounded-md flex flex-col items-center justify-center ${
+                      editedAction.type === item.type 
+                        ? 'bg-blue-100 text-blue-700 border-blue-300 border' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {item.icon}
+                    <span className="text-xs mt-1">{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           
           {/* Type-specific fields */}
           {renderTypeSpecificFields()}
