@@ -34,12 +34,6 @@ import { SystemSettings } from './pages/admin/SystemSettings'
 import { CreateProjectTask } from './pages/admin/CreateProjectTask' // RESTORED
 import { EditProjectTask } from './pages/admin/EditProjectTask' // RESTORED
 
-// Manager Imports
-import { ManagerDashboard } from './pages/manager/Dashboard'
-
-// Employee Imports
-import { EmployeeDashboard } from './pages/employee/Dashboard'
-
 const App: React.FC = () => {
   return (
     <ErrorBoundary>
@@ -185,25 +179,15 @@ const App: React.FC = () => {
               }
             />
 
-
-            {/* Rotas de Manager */}
+            {/* Redirect manager and employee routes to admin dashboard for now */}
             <Route
-              path="/manager/dashboard"
-              element={
-                <PrivateRoute allowedRoles={['manager']}>
-                  <ManagerDashboard />
-                </PrivateRoute>
-              }
+              path="/manager/*"
+              element={<Navigate to="/admin/dashboard" replace />}
             />
-
-            {/* Rotas de Employee */}
+            
             <Route
-              path="/employee/dashboard"
-              element={
-                <PrivateRoute allowedRoles={['employee']}>
-                  <EmployeeDashboard />
-                </PrivateRoute>
-              }
+              path="/employee/*"
+              element={<Navigate to="/admin/dashboard" replace />}
             />
 
             {/* Rota Padrão */}
