@@ -86,89 +86,130 @@ export interface TaskSchema {
   actions: TaskAction[]; // Array of actions
 }
 
+// Field types for action templates and actions
+export type FieldType = 
+  | 'text'           // Short text input
+  | 'long_text'      // Textarea for longer content
+  | 'number'         // Numeric input
+  | 'date'           // Date picker
+  | 'select'         // Dropdown selection
+  | 'checkbox'       // Boolean checkbox
+  | 'radio'          // Radio button selection
+  | 'file_upload'    // File upload field
+  | 'info'           // Information display (no input)
+  | 'document'       // Document with multiple sections
+  | 'approval';      // Approval step
+
+// Field definition for templates
+export interface FieldDefinition {
+  id: string;
+  type: FieldType;
+  label: string;
+  placeholder?: string;
+  required?: boolean;
+  description?: string;
+  options?: string[];  // For select/radio fields
+  defaultValue?: any;
+  validation?: {
+    min?: number;
+    max?: number;
+    pattern?: string;
+    errorMessage?: string;
+  };
+  hasAttachments?: boolean; // For info fields that can have attachments
+}
+
 //  Interface for a task action
 export interface TaskAction {
   id: string;
   title: string;
-  type: 'text' | 'long_text' | 'file_upload' | 'approval' | 'date' | 'document' | 'info'; // Added 'info'
+  type: FieldType;
   completed: boolean;
   completedAt?: number | null;
   completedBy?: string | null;
   description?: string;
-    // Specific fields for 'info' type
-    infoTitle?: string;         // Title for the info section
-    infoDescription?: string;   // Description for the info section
-    hasAttachments?: boolean;   // Flag for required attachments
-    data?: {
-        fileURLs?: string[];    // NEW: Array of file URLs for 'info' type
-        steps?: any[];          // Keep steps for document type
-    };
-    attachments?: {             // Attachments specific to THIS action step
-        id: string;
-        name: string;
-        url: string;
-        type: 'image' | 'video' | 'document' | 'link' | 'other' | 'audio';
-        size?: number;
-    }[];
-}
-
-//NEW: Interface for a task action template
-export interface ActionTemplateSchema {
+  // Specific fields for 'info' type
+  infoTitle?: string;         // Title for the info section
+  infoDescription?: string;   // Description for the info section
+  hasAttachments?: boolean;   // Flag for required attachments
+  data?: {
+    fileURLs?: string[];      // Array of file URLs for 'info' type
+    steps?: FieldDefinition[]; // Steps for document type
+    value?: any;              // Stored value for the field
+    values?: Record<string, any>; // For document with multiple fields
+  };
+  attachments?: {             // Attachments specific to THIS action step
     id: string;
-    title: string;
-    type: 'custom'; // Assuming a single type for now
-    elements: TaskAction[]; // Now includes description and fileURLs
-    order: number;
+    name: string;
+    url: string;
+    type: 'image' | 'video' | 'document' | 'link' | 'other' | 'audio';
+    size?: number;
+  }[];
 }
 
-    // Reward Schema
-    export interface RewardSchema {
-      id: string
-      userId: string
-      type: 'task_completion' | 'monthly_bonus' | 'special_achievement'
-      amount: number
-      description: string
-      timestamp: number
-      projectId?: string
-      taskId?: string
-    }
+// Interface for a task action template
+export interface ActionTemplateSchema {
+  id: string;
+  title: string;
+  description?: string;
+  type: 'custom' | 'standard'; // Template type
+  elements: FieldDefinition[]; // Array of field definitions
+  order: number;
+  createdBy?: string;
+  createdAt?: number;
+  updatedAt?: number;
+  isActive?: boolean;
+  category?: string;
+}
 
-    // Notification Schema
-    export interface NotificationSchema {
-      id: string
-      userId: string
-      type: 'task_created' | 'task_assigned' | 'task_completed' | 'project_update' | 'reward_earned' | 'system_alert' | 'task_updated'
-      title: string
-      message: string
-      read: boolean
-      timestamp: number
-      relatedEntityId?: string
-      sender?: string
-    }
+// Reward Schema
+export interface RewardSchema {
+  id: string
+  userId: string
+  type: 'task_completion' | 'monthly_bonus' | 'special_achievement'
+  amount: number
+  description: string
+  timestamp: number
+  projectId?: string
+  taskId?: string
+}
 
-    // System Settings Schema
-    export interface SystemSettingsSchema {
-      taskCompletionBase: number
-      complexityMultiplier: number
-      monthlyBonus: number
-      twoFactorAuth: boolean
-      passwordResetFrequency: number
-      emailNotifications: boolean
-      pushNotifications: boolean
-      weeklyReports: boolean
-    }
+// Notification Schema
+export interface NotificationSchema {
+  id: string
+  userId: string
+  type: 'task_created' | 'task_assigned' | 'task_completed' | 'project_update' | 'reward_earned' | 'system_alert' | 'task_updated'
+  title: string
+  message: string
+  read: boolean
+  timestamp: number
+  relatedEntityId?: string
+  sender?: string
+}
 
-   // Activity Log Schema
-    export interface ActivityLogSchema {
-      id: string;
-      userId: string;
-      userName: string;
-      type: 'project_created' | 'project_updated' | 'task_created' | 'task_updated' | 'task_completed' | 'user_login' | 'user_created' | 'task_status_update' | 'other'; // Added task_status_update
-      projectId?: string; // Optional, if related to a project
-      taskId?: string;    // Optional, if related to a task
-      projectName?: string; // NEW: Project name for easier display
-      taskName?: string;    // NEW: Task name for easier display
-      newStatus?: string;   // NEW: For status updates
-      details?: string;   // Optional, for additional details
-      timestamp: number;
-    }
+// System Settings Schema
+export interface SystemSettingsSchema {
+  taskCompletionBase: number
+  complexityMultiplier: number
+  monthlyBonus: number
+  twoFactorAuth: boolean
+  passwordResetFrequency: number
+  emailNotifications: boolean
+  pushNotifications: boolean
+  weeklyReports: boolean
+}
+
+// Activity Log Schema
+export interface ActivityLogSchema {
+  id: string;
+  userId: string;
+  userName: string;
+  type: 'project_created' | 'project_updated' | 'task_created' | 'task_updated' | 'task_completed' | 'user_login' | 'user_created' | 'task_status_update' | 'other'; // Added task_status_update
+  projectId?: string; // Optional, if related to a project
+  taskId?: string;    // Optional, if related to a task
+  projectName?: string; // NEW: Project name for easier display
+  taskName?: string;    // NEW: Task name for easier display
+  newStatus?: string;   // NEW: For status updates
+  details?: string;   // Optional, for additional details
+  timestamp: number;
+}
