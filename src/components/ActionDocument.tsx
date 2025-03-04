@@ -8,7 +8,12 @@ import {
   Clock, 
   CheckCircle, 
   X,
-  Printer
+  Printer,
+  Info,
+  File,
+  Image,
+  Video,
+  Music
 } from 'lucide-react';
 import { AttachmentDisplay } from './AttachmentDisplay';
 import { getDefaultProfileImage } from '../utils/user';
@@ -68,6 +73,75 @@ export const ActionDocument: React.FC<ActionDocumentProps> = ({
     }
   };
 
+  // Get appropriate icon for attachment type
+  const getAttachmentIcon = (type: string) => {
+    switch (type) {
+      case 'image':
+        return <Image size={20} className="text-blue-500" />;
+      case 'video':
+        return <Video size={20} className="text-red-500" />;
+      case 'audio':
+        return <Music size={20} className="text-purple-500" />;
+      case 'document':
+        return <FileText size={20} className="text-orange-500" />;
+      default:
+        return <File size={20} className="text-gray-500" />;
+    }
+  };
+
+  // Render document content based on action type
+  const renderActionContent = () => {
+    if (action.type === 'info') {
+      return (
+        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg">
+          <h5 className="font-semibold text-blue-800 mb-2">{action.infoTitle}</h5>
+          <p className="text-gray-700 whitespace-pre-wrap">{action.infoDescription}</p>
+        </div>
+      );
+    }
+
+    if (action.type === 'document' && action.data?.steps) {
+      return (
+        <div className="space-y-4">
+          {action.data.steps.map((step: any, index: number) => (
+            <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <h5 className="font-semibold text-gray-800 mb-2">{step.label || step.title}</h5>
+              {step.type === 'text' || step.type === 'long_text' ? (
+                <div className="bg-white p-3 border border-gray-300 rounded-md">
+                  <p className="text-gray-700">{step.value || 'Não preenchido'}</p>
+                </div>
+              ) : step.type === 'date' ? (
+                <div className="bg-white p-3 border border-gray-300 rounded-md flex items-center">
+                  <Calendar size={16} className="text-blue-500 mr-2" />
+                  <p className="text-gray-700">{step.value || 'Data não selecionada'}</p>
+                </div>
+              ) : step.type === 'select' ? (
+                <div className="bg-white p-3 border border-gray-300 rounded-md">
+                  <p className="text-gray-700">{step.value || 'Opção não selecionada'}</p>
+                </div>
+              ) : step.type === 'checkbox' ? (
+                <div className="flex items-center">
+                  <div className={`w-5 h-5 border rounded flex items-center justify-center ${step.value ? 'bg-blue-500 border-blue-500' : 'bg-white border-gray-300'}`}>
+                    {step.value && <CheckCircle size={14} className="text-white" />}
+                  </div>
+                  <span className="ml-2 text-gray-700">{step.label}</span>
+                </div>
+              ) : (
+                <p className="text-gray-600">{step.description}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <p className="text-gray-700 whitespace-pre-wrap">{action.description}</p>
+      </div>
+    );
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 print:p-0">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto print:shadow-none print:max-w-none print:max-h-none">
@@ -119,7 +193,10 @@ export const ActionDocument: React.FC<ActionDocumentProps> = ({
 
           {/* Action Information */}
           <div className="mb-6">
-            <h4 className="text-md font-semibold text-gray-700 mb-2 border-b pb-2">Detalhes da Ação</h4>
+            <h4 className="text-md font-semibold text-gray-700 mb-2 border-b pb-2 flex items-center">
+              <Info size={18} className="text-blue-500 mr-2" />
+              Detalhes da Ação
+            </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
                 <p className="text-sm text-gray-500">Título da Ação</p>
@@ -166,39 +243,12 @@ export const ActionDocument: React.FC<ActionDocumentProps> = ({
 
           {/* Action Content */}
           <div className="mb-6">
-            <h4 className="text-md font-semibold text-gray-700 mb-2 border-b pb-2">Conteúdo</h4>
+            <h4 className="text-md font-semibold text-gray-700 mb-2 border-b pb-2 flex items-center">
+              <FileText size={18} className="text-blue-500 mr-2" />
+              Conteúdo
+            </h4>
             
-            {/* Display based on action type */}
-            {action.type === 'info' && (
-              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <h5 className="font-semibold text-gray-800 mb-2">{action.infoTitle}</h5>
-                <p className="text-gray-700 whitespace-pre-wrap">{action.infoDescription}</p>
-              </div>
-            )}
-
-            {(action.type === 'text' || action.type === 'long_text') && (
-              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <p className="text-gray-700 whitespace-pre-wrap">{action.description}</p>
-              </div>
-            )}
-
-            {action.type === 'date' && (
-              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 flex items-center">
-                <Calendar size={18} className="text-blue-600 mr-2" />
-                <span className="text-gray-700">{action.description}</span>
-              </div>
-            )}
-
-            {action.type === 'document' && action.data?.steps && (
-              <div className="space-y-4">
-                {action.data.steps.map((step: any, index: number) => (
-                  <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <h5 className="font-semibold text-gray-800 mb-2">{step.title}</h5>
-                    <p className="text-gray-700 whitespace-pre-wrap">{step.description}</p>
-                  </div>
-                ))}
-              </div>
-            )}
+            {renderActionContent()}
           </div>
 
           {/* Attachments Section */}
@@ -206,8 +256,11 @@ export const ActionDocument: React.FC<ActionDocumentProps> = ({
              action.type === 'file_upload' || 
              action.attachments?.length) && (
             <div className="mb-6">
-              <h4 className="text-md font-semibold text-gray-700 mb-2 border-b pb-2">Anexos</h4>
-              <div className="space-y-2">
+              <h4 className="text-md font-semibold text-gray-700 mb-2 border-b pb-2 flex items-center">
+                <Paperclip size={18} className="text-blue-500 mr-2" />
+                Anexos
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {action.data?.fileURLs?.map((url: string, index: number) => (
                   <div key={index} className="flex items-center p-2 bg-gray-50 rounded-lg border border-gray-200">
                     <AttachmentDisplay 
